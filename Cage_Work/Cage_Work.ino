@@ -1,15 +1,23 @@
 #define NumPairs 3
 #define NumLEDPins 2
-#define CHECK_PIN_FREQ 10000
-#define PIN_IO_DELAY 500
+#define CHECK_PIN_FREQ 50
+#define PIN_IO_DELAY 50
 #define ANALOG_HIGH 1000 //>1000 seems to be a valid signal connect
+#define pulseRight
 #define RAND_MAX NumPairs - 1
+#define LOCK_RELAY_PIN A5
+#define LOCK_RELAY_INIT LOW
+
+int brightnessCounter = 1;
+bool onOff = true;
+bool gameWon = false;
+bool winSequenceDone = false;
 
 typedef struct {
   int red;
   int blue;
   int green;
-  char colorName[];
+  //char colorName[];
 } color;
 
 struct LED
@@ -27,10 +35,6 @@ typedef struct
   struct LED rgb;
 } pinPair;
 
-
-
-int counter = 1;
-
 pinPair pinPairs[NumPairs] = {
   //RED Pair
   {A2, 2, {5, 6, 7}},
@@ -43,28 +47,33 @@ pinPair pinPairs[NumPairs] = {
 
 color colors[] = {
   //RED
-  {255, 0, 0, "red"},
+  {255, 0, 0},
   //BLUE
-  {0, 0, 255, "green"},
+  {0, 0, 255},
   //GREEN
-  {0, 255, 0, "blue"}/*,
+  {0, 255, 0},
   //YELLOW
-  {122, 122, 122}*/
+  {255, 255, 0},
+
+  {255, 0, 255},
+
+  {255, 255, 255},
+
+  {0, 255, 255}
 };
 
 
 void setup() {
   randomSeed(analogRead(1));
   Serial.begin(9600);
+  shuffleColors();
   for (int x = 0; x < NumPairs; x++) {
-    Serial.println("Initiated pin");
+    //Serial.println("Initiated pin");
     pinPair initiatePin = pinPairs[x];
     pinMode(initiatePin.outPin, OUTPUT);
-    shuffleColors();
 
     //Add a color
     pinPairs[x].rgb.color = colors[x];
-    ledOn(pinPairs[x].rgb);
     //pinMode(initiatePin.inPin, INPUT);
   }
 
@@ -75,20 +84,38 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   //Check pin states
-  delay(CHECK_PIN_FREQ);
-  for (int x = 0; x < NumPairs; x++) {
-    pinPair currentPin = pinPairs[x];
-    Serial.println("----------BEGIN-------------");
-    Serial.print("Reading Pin Pair: " );
-    Serial.print(currentPin.inPin);
-    Serial.print(", ");
-    Serial.println(currentPin.outPin);
+  if (!gameWon) {
+    delay(CHECK_PIN_FREQ);
+
+    brightnessCounter++;
+    onOff = !onOff;
+
+    for (int x = 0; x < NumPairs; x++) {
+      pinPair currentPin = pinPairs[x];
+      //Serial.println("----------BEGIN-------------");
+      //Serial.print("Reading Pin Pair: " );
+      //Serial.print(currentPin.inPin);
+      //Serial.print(", ");
+      //Serial.println(currentPin.outPin);
 
 
-    bool currentCheck = checkLoop(currentPin);
-    Serial.print("Current State: ");
-    Serial.println(currentCheck ? "ON" : "OFF");
-    Serial.println("-----------END------------\n");
+      bool currentCheck = checkLoop(currentPin);
+      if (currentCheck) {
+        gameWon = true;
+        ledOn(currentPin.rgb);
+      }
+      else {
+        gameWon = false;
+        pulse(currentPin.rgb);
+      }
+      //Serial.print("Current State: ");
+      //Serial.println(currentCheck ? "ON" : "OFF");
+      //Serial.println("-----------END------------\n");
+    }
+  }
+  else if (!winSequenceDone) {
+    winSequence();
+    Serial.println("win sequence");
   }
 }
 
@@ -96,11 +123,7 @@ bool checkLoop(pinPair checkPin) {
 
   bool success = false;
   //SET HIGHPIN
-  if (counter % 2 == 0) {
-    digitalWrite(checkPin.outPin, HIGH);
-    Serial.println("SET HIGH");
-  }
-  counter++;
+  digitalWrite(checkPin.outPin, HIGH);
 
   delay(PIN_IO_DELAY);
 
@@ -108,17 +131,22 @@ bool checkLoop(pinPair checkPin) {
   int readValue = analogRead(checkPin.inPin);
 
   if (readValue > ANALOG_HIGH) {
-    Serial.print("HIGH READ PIN: ");
-    Serial.println(checkPin.inPin);
+    //Serial.print("HIGH READ PIN: ");
+    ////Serial.println(checkPin.inPin);
     success =  true;
   }
 
   //TURN IT AT ALL OFF
   digitalWrite(checkPin.outPin, LOW);
-
-  delay(PIN_IO_DELAY);
   return success;
 }
+
+void winSequence() {
+  pinMode(LOCK_RELAY_PIN, OUTPUT);
+  analogWrite(LOCK_RELAY_PIN, !LOCK_RELAY_INIT);
+  winSequenceDone = true;
+}
+
 
 void shuffleColors() {
   const int colorCount = sizeof colors / sizeof colors[0];
@@ -127,16 +155,16 @@ void shuffleColors() {
     color temp = colors[n];
     colors[n] =  colors[i];
     colors[i] = temp;
-    Serial.println(colors[i].colorName);
   }
 }
 
 void ledOn(LED led) {
+  int bright = brightnessCounter % 4 + 1;
   pinMode(led.rPin,   OUTPUT);
   pinMode(led.gPin, OUTPUT);
   pinMode(led.bPin,  OUTPUT);
   analogWrite(led.rPin, led.color.red);
-  analogWrite(led.gPin, led.color.green);
+  analogWrite(led.gPin, led.color.green );
   analogWrite(led.bPin, led.color.blue);
 }
 
@@ -144,4 +172,8 @@ void ledOff(LED led) {
   analogWrite(led.rPin, LOW);
   analogWrite(led.gPin, LOW);
   analogWrite(led.bPin, LOW);
+}
+
+void pulse(LED led) {
+  onOff ? ledOn(led) : ledOff(led);
 }
