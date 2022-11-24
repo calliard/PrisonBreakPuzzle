@@ -9,6 +9,7 @@ typedef struct {
   int red;
   int blue;
   int green;
+  char colorName[];
 } color;
 
 struct LED
@@ -42,11 +43,11 @@ pinPair pinPairs[NumPairs] = {
 
 color colors[] = {
   //RED
-  {255, 0, 0},
+  {255, 0, 0, "red"},
   //BLUE
-  {0, 0, 255},
+  {0, 0, 255, "green"},
   //GREEN
-  {0, 255, 0}/*,
+  {0, 255, 0, "blue"}/*,
   //YELLOW
   {122, 122, 122}*/
 };
@@ -126,6 +127,7 @@ void shuffleColors() {
     color temp = colors[n];
     colors[n] =  colors[i];
     colors[i] = temp;
+    Serial.println(colors[i].colorName);
   }
 }
 
