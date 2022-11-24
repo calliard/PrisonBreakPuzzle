@@ -1,6 +1,6 @@
 #define NumPairs 3
 #define NumLEDPins 2
-#define CHECK_PIN_FREQ 50
+#define CHECK_PIN_FREQ 100
 #define PIN_IO_DELAY 50
 #define ANALOG_HIGH 1000 //>1000 seems to be a valid signal connect
 #define pulseRight
@@ -12,6 +12,8 @@ int brightnessCounter = 1;
 bool onOff = true;
 bool gameWon = false;
 bool winSequenceDone = false;
+
+int winConditions = 0;
 
 typedef struct {
   int red;
@@ -89,6 +91,7 @@ void loop() {
 
     brightnessCounter++;
     onOff = !onOff;
+    winConditions = 0;
 
     for (int x = 0; x < NumPairs; x++) {
       pinPair currentPin = pinPairs[x];
@@ -101,8 +104,9 @@ void loop() {
 
       bool currentCheck = checkLoop(currentPin);
       if (currentCheck) {
-        gameWon = true;
+        // gameWon = true;
         ledOn(currentPin.rgb);
+        winConditions++;
       }
       else {
         gameWon = false;
@@ -112,6 +116,10 @@ void loop() {
       //Serial.println(currentCheck ? "ON" : "OFF");
       //Serial.println("-----------END------------\n");
     }
+    
+    if (winConditions == NumPairs){
+      gameWon = true;
+      }
   }
   else if (!winSequenceDone) {
     winSequence();
@@ -132,7 +140,7 @@ bool checkLoop(pinPair checkPin) {
 
   if (readValue > ANALOG_HIGH) {
     //Serial.print("HIGH READ PIN: ");
-    ////Serial.println(checkPin.inPin);
+    //Serial.println(checkPin.inPin);
     success =  true;
   }
 
